@@ -36,6 +36,11 @@ jobs:
         env:
           VITE_API_URL: https://marvelrocks-api-eub5bndvehdzfnhm.centralindia-01.azurewebsites.net
 
+      - name: Verify production build
+        run: |
+          grep -q '/assets/' web/dist/index.html
+          ! grep -q '/src/main.tsx' web/dist/index.html
+
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
 
@@ -54,9 +59,8 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_PURPLE_MUSHROOM_06360A100 }}
           action: upload
-          app_location: web
-          api_location: ""
-          output_location: dist
+          app_location: web/dist
+          output_location: ""
           skip_app_build: true
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
