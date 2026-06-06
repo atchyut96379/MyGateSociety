@@ -225,6 +225,10 @@ export const api = {
     return request<Visitor>(`/visitors/${id}/check-in`, { method: "POST" }, token);
   },
 
+  checkOutVisitor(token: string, id: string) {
+    return request<Visitor>(`/visitors/${id}/check-out`, { method: "POST" }, token);
+  },
+
   updateDelivery(token: string, id: string, status: string) {
     return request<Delivery>(`/deliveries/${id}`, {
       method: "PATCH",

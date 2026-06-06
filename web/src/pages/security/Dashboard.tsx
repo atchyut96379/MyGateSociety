@@ -58,6 +58,14 @@ export default function SecurityDashboard() {
     reload();
   }
 
+  async function actionCheckOut(visitorId?: string) {
+    const id = visitorId ?? (lookup?.type === "visitor" ? (lookup.record.id as string) : "");
+    if (!token || !id) return;
+    await api.checkOutVisitor(token, id);
+    setOtpInput("");
+    reload();
+  }
+
   async function actionDelivery(status: string) {
     if (!token || !lookup || lookup.type !== "delivery") return;
     const id = lookup.record.id as string;
@@ -150,7 +158,13 @@ export default function SecurityDashboard() {
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.75rem" }}>
             {lookup.type === "visitor" && (
-              <button type="button" className="btn" onClick={actionCheckIn}>Check in</button>
+              lookup.record.status === "CHECKED_IN" ? (
+                <button type="button" className="btn btn-danger" onClick={() => actionCheckOut()}>
+                  Check out
+                </button>
+              ) : (
+                <button type="button" className="btn" onClick={actionCheckIn}>Check in</button>
+              )
             )}
             {lookup.type === "delivery" && (
               <>
@@ -194,8 +208,28 @@ export default function SecurityDashboard() {
       </div>
 
       <div className="card">
+        <h3>Visitors inside (check out)</h3>
+        {visitors.filter((v) => v.status === "CHECKED_IN").length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>No visitors checked in right now.</p>
+        ) : (
+          visitors
+            .filter((v) => v.status === "CHECKED_IN")
+            .map((v) => (
+              <div key={v.id} className="list-row">
+                <span>{v.guest_name} → {v.flat_label}</span>
+                <button type="button" className="btn btn-danger" onClick={() => actionCheckOut(v.id)}>
+                  Check out
+                </button>
+              </div>
+            ))
+        )}
+      </div>
+
+      <div className="card">
         <h3>Expected visitors</h3>
-        {visitors.map((v) => (
+        {visitors
+          .filter((v) => v.status !== "CHECKED_IN" && v.status !== "CHECKED_OUT")
+          .map((v) => (
           <div key={v.id} className="list-row">
             <span>{v.guest_name} → {v.flat_label}</span>
             <span className="badge badge-green">{v.otp}</span>
