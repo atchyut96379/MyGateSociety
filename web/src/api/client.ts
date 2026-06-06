@@ -98,6 +98,10 @@ async function request<T>(
 }
 
 export const api = {
+  health() {
+    return request<{ ok: boolean; service: string }>("/health", {}, null, 10_000);
+  },
+
   loginConfig() {
     return request<{ bootstrap_mode: boolean; bootstrap_login_id: string }>(
       "/auth/login-config",
@@ -181,9 +185,11 @@ export const api = {
         body: form,
       });
     } catch {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "this website";
       throw new ApiError(
         0,
-        "Cannot reach API. Check CORS_ORIGINS on App Service includes this website URL."
+        `Cannot reach API at ${API_BASE}. Add "${origin}" to CORS_ORIGINS on Azure App Service, save, restart the API, then try again.`
       );
     }
     const data = await res.json().catch(() => ({}));

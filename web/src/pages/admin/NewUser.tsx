@@ -37,11 +37,19 @@ export default function AdminNewUser() {
   const [importing, setImporting] = useState(false);
   const [created, setCreated] = useState<CreateUserResponse | null>(null);
   const [importResult, setImportResult] = useState<BulkImportResponse | null>(null);
+  const [apiOk, setApiOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!token) return;
     api.flats(token).then(setFlats);
   }, [token]);
+
+  useEffect(() => {
+    api
+      .health()
+      .then(() => setApiOk(true))
+      .catch(() => setApiOk(false));
+  }, []);
 
   useEffect(() => {
     if (!token || !editUserId) return;
@@ -258,6 +266,18 @@ export default function AdminNewUser() {
 
       {!editUserId && <form onSubmit={onImport} className="card">
         <h3 style={{ marginTop: 0 }}>Bulk import (Excel)</h3>
+        {apiOk === false && (
+          <p className="error" style={{ marginTop: 0 }}>
+            API not reachable from this browser ({typeof window !== "undefined" ? window.location.origin : ""}).
+            In Azure Portal → App Service → Environment variables → set{" "}
+            <code>CORS_ORIGINS</code> to include that URL, then restart the API.
+          </p>
+        )}
+        {apiOk === true && (
+          <p className="muted" style={{ margin: 0, color: "var(--primary)" }}>
+            API connection OK
+          </p>
+        )}
         <p className="muted">
           Use <strong>Download template (.xlsx)</strong> below — do not use a custom Excel file.
           Required column: <code>name</code>. Also: <code>phone</code> (optional), <code>flat</code>,{" "}

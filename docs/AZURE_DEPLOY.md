@@ -176,7 +176,7 @@ App Service → **marvelrocks-api** → **Settings** → **Environment variables
 | `DATABASE_URL` | `mssql+pymssql://sqladmin:...@....database.windows.net:1433/mygatesociety` |
 | `JWT_SECRET` | Long random string (32+ characters) — **not** `change-this-in-production` |
 | `ENVIRONMENT` | `production` |
-| `CORS_ORIGINS` | `https://www.marvelrocks.in,https://marvelrocks.in` |
+| `CORS_ORIGINS` | `https://purple-mushroom-06360a100.7.azurestaticapps.net,https://www.marvelrocks.in,https://marvelrocks.in` |
 | `RAZORPAY_KEY_ID` | Your Razorpay key |
 | `RAZORPAY_KEY_SECRET` | Your Razorpay secret |
 | `WEBSITES_PORT` | `8000` |
@@ -382,8 +382,17 @@ Only run `--reset` on a fresh empty database.
 
 ### CORS error in browser
 
-- Set `CORS_ORIGINS` on App Service to include exact origin (`https://www.marvelrocks.in`)
-- Restart App Service after changing settings
+The browser address bar must match an entry in `CORS_ORIGINS` **exactly** (no trailing slash).
+
+1. Azure Portal → **marvelrocks-api** App Service → **Settings** → **Environment variables**
+2. Set `CORS_ORIGINS` to (comma-separated, no spaces required):
+   ```
+   https://purple-mushroom-06360a100.7.azurestaticapps.net,https://www.marvelrocks.in,https://marvelrocks.in
+   ```
+3. **Save** → **Restart** the App Service
+4. Hard-refresh the website (`Ctrl+F5`) and retry
+
+Copy the exact origin from your browser (e.g. the Static Web Apps URL before custom DNS is ready).
 
 ### API 500 / database errors
 
