@@ -18,6 +18,7 @@ export function useRealtime(intervalMs = DEFAULT_INTERVAL_MS) {
     let active = true;
 
     function load() {
+      if (!token) return;
       api.realtimeSummary(token).then((data) => {
         if (active) setSummary(data);
       }).catch(() => {});

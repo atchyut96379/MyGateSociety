@@ -1,5 +1,4 @@
 import { ApiError, api } from "../api/client";
-import type { RazorpayOrder } from "../api/types";
 
 type RazorpayHandlerResponse = {
   razorpay_payment_id: string;
