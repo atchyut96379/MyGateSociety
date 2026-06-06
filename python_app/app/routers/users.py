@@ -159,6 +159,7 @@ def _parse_import_row(
         )
 
 
+@router.get("/bulk-template")
 @router.get("/import-template")
 def download_import_template(_: User = Depends(require_secretary_ready)):
     wb = Workbook()
@@ -178,12 +179,11 @@ def download_import_template(_: User = Depends(require_secretary_ready)):
     )
 
 
-@router.post("/import", response_model=BulkImportResponse)
-async def import_users(
-    file: UploadFile = File(...),
-    admin: User = Depends(require_secretary_ready),
-    db: Session = Depends(get_db),
-):
+async def _import_users_from_excel(
+    file: UploadFile,
+    admin: User,
+    db: Session,
+) -> BulkImportResponse:
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(status_code=400, detail="Upload an Excel file (.xlsx)")
 
@@ -229,6 +229,24 @@ async def import_users(
     db.commit()
     failed = len(results) - created
     return BulkImportResponse(created=created, failed=failed, results=results)
+
+
+@router.post("/bulk-upload", response_model=BulkImportResponse)
+async def bulk_upload_users(
+    file: UploadFile = File(...),
+    admin: User = Depends(require_secretary_ready),
+    db: Session = Depends(get_db),
+):
+    return await _import_users_from_excel(file, admin, db)
+
+
+@router.post("/import", response_model=BulkImportResponse, include_in_schema=False)
+async def import_users(
+    file: UploadFile = File(...),
+    admin: User = Depends(require_secretary_ready),
+    db: Session = Depends(get_db),
+):
+    return await _import_users_from_excel(file, admin, db)
 
 
 @router.get("/committee-roles")

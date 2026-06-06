@@ -161,7 +161,7 @@ export const api = {
   },
 
   async downloadUserImportTemplate(token: string) {
-    const res = await fetch(`${API_BASE}/users/import-template`, {
+    const res = await fetch(`${API_BASE}/users/bulk-template`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new ApiError(res.status, "Could not download template");
@@ -177,20 +177,33 @@ export const api = {
   async importUsers(token: string, file: File) {
     const form = new FormData();
     form.append("file", file);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 120_000);
     let res: Response;
     try {
-      res = await fetch(`${API_BASE}/users/import`, {
+      res = await fetch(`${API_BASE}/users/bulk-upload`, {
         method: "POST",
+        mode: "cors",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
+        signal: controller.signal,
       });
-    } catch {
+    } catch (err) {
       const origin =
         typeof window !== "undefined" ? window.location.origin : "this website";
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new ApiError(408, "Import timed out. Try again with fewer rows.");
+      }
+      const hint =
+        err instanceof Error && /failed to fetch/i.test(err.message)
+          ? ` Try disabling ad blockers for ${origin}, or hard-refresh (Ctrl+F5).`
+          : "";
       throw new ApiError(
         0,
-        `Cannot reach API at ${API_BASE}. Add "${origin}" to CORS_ORIGINS on Azure App Service, save, restart the API, then try again.`
+        `Cannot reach API at ${API_BASE}.${hint} If needed, add "${origin}" to CORS_ORIGINS and restart the API.`
       );
+    } finally {
+      clearTimeout(timer);
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
