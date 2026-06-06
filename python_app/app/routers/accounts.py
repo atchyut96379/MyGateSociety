@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Flat, MaintenanceBill, SocietyExpense, SocietyTransaction
+from ..models import Flat, MaintenanceBill, SocietyExpense, SocietyTransaction, User
 from ..schemas import AccountsSummaryResponse
 from ..security import get_current_user
 
