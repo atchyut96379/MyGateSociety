@@ -1,0 +1,36 @@
+# SQL Server Developer Edition — local development (Python API runs on host)
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "MyGate_Dev12345"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mygate_sqlserver:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'MyGate_Dev12345' -C -Q 'SELECT 1' || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'MyGate_Dev12345' -C -Q 'SELECT 1'",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    command: >
+      /bin/bash -c "
+      /opt/mssql/bin/sqlservr &
+      pid=$$!;
+      SQLCMD=/opt/mssql-tools18/bin/sqlcmd;
+      if [ ! -x $$SQLCMD ]; then SQLCMD=/opt/mssql-tools/bin/sqlcmd; fi;
+      until $$SQLCMD -S localhost -U sa -P 'MyGate_Dev12345' -C -Q 'SELECT 1' >/dev/null 2>&1; do sleep 2; done;
+      $$SQLCMD -S localhost -U sa -P 'MyGate_Dev12345' -C -Q \"IF DB_ID(N'mygatesociety') IS NULL CREATE DATABASE [mygatesociety]\";
+      wait $$pid
+      "
+
+volumes:
+  mygate_sqlserver:
