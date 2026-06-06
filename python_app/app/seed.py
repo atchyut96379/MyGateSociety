@@ -51,16 +51,19 @@ def ensure_database_exists():
     database = url.database
     if not database or not url.drivername.startswith("mssql"):
         return
+    # Azure SQL Database is created in the portal; skip CREATE DATABASE there.
+    if url.host and "database.windows.net" in url.host:
+        return
 
     master_engine = create_engine(url.set(database="master"), pool_pre_ping=True)
     escaped_database = database.replace("]", "]]")
+    escaped_name = database.replace("'", "''")
     with master_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        exists = conn.execute(
-            text("SELECT DB_ID(:database_name)"),
-            {"database_name": database},
-        ).scalar()
-        if exists is None:
-            conn.execute(text(f"CREATE DATABASE [{escaped_database}]"))
+        conn.execute(
+            text(
+                f"IF DB_ID(N'{escaped_name}') IS NULL CREATE DATABASE [{escaped_database}]"
+            )
+        )
 
 
 def sync_flats(db, society: Society) -> int:
