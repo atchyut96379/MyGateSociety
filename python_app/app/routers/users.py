@@ -202,9 +202,14 @@ async def import_users(
     mapping = build_column_map(rows[header_idx])
 
     if "name" not in mapping["fields"]:
+        found = [str(c).strip() for c in rows[header_idx] if c is not None and str(c).strip()]
         raise HTTPException(
             status_code=400,
-            detail="Excel must have a 'name' column in the first row",
+            detail=(
+                "Excel must have a 'name' column (e.g. name, resident, member). "
+                f"Found headers: {', '.join(found) or 'none'}. "
+                "Use Download template on this page."
+            ),
         )
 
     results: list[BulkImportRowResult] = []

@@ -355,3 +355,31 @@ export interface BulkImportResponse {
   failed: number;
   results: BulkImportRowResult[];
 }
+
+export interface GateLogEntry {
+  type: string;
+  id: string;
+  name: string;
+  flat_label: string | null;
+  check_in: string | null;
+  check_out: string | null;
+  status: string;
+  detail: string | null;
+}
+
+export interface DailyGateLogs {
+  date: string;
+  visitors: GateLogEntry[];
+  staff: GateLogEntry[];
+  deliveries: GateLogEntry[];
+}
+
+export interface StaffAttendanceEntry {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  staff_type: string;
+  flat_label: string | null;
+  check_in: string | null;
+  check_out: string | null;
+}

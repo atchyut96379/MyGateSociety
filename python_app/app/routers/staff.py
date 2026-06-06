@@ -1,12 +1,12 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..models import DomesticStaff, StaffAttendance, User
 from ..models import StaffRating
-from ..schemas import CreateStaffRequest, RateStaffRequest, StaffResponse
+from ..schemas import CreateStaffRequest, RateStaffRequest, StaffAttendanceEntry, StaffResponse
 from ..security import get_current_user, require_roles
 from ..utils import generate_otp, new_id
 
@@ -108,6 +108,60 @@ def staff_check_in(
         )
     db.commit()
     return {"ok": True, "message": "Checked in", "staff_name": staff.name}
+
+
+@router.post("/{staff_id}/check-out")
+def staff_check_out(
+    staff_id: str,
+    _: User = Depends(require_roles("SECURITY", "ADMIN")),
+    db: Session = Depends(get_db),
+):
+    staff = db.get(DomesticStaff, staff_id)
+    if staff is None or not staff.active:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    record = (
+        db.query(StaffAttendance)
+        .filter(StaffAttendance.staff_id == staff_id, StaffAttendance.date >= today)
+        .first()
+    )
+    if record is None or not record.check_in:
+        raise HTTPException(status_code=400, detail="Staff not checked in today")
+    if record.check_out:
+        return {"ok": True, "message": "Already checked out today"}
+
+    record.check_out = datetime.utcnow()
+    db.commit()
+    return {"ok": True, "message": "Checked out", "staff_name": staff.name}
+
+
+@router.get("/attendance/today", response_model=list[StaffAttendanceEntry])
+def staff_attendance_today(
+    _: User = Depends(require_roles("SECURITY", "ADMIN", "COMMITTEE")),
+    db: Session = Depends(get_db),
+):
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    rows = (
+        db.query(StaffAttendance)
+        .options(joinedload(StaffAttendance.staff).joinedload(DomesticStaff.flat))
+        .filter(StaffAttendance.date >= today)
+        .order_by(StaffAttendance.check_in.desc())
+        .all()
+    )
+    return [
+        StaffAttendanceEntry(
+            id=row.id,
+            staff_id=row.staff.id,
+            staff_name=row.staff.name,
+            staff_type=row.staff.staff_type,
+            flat_label=row.staff.flat.label if row.staff.flat else None,
+            check_in=row.check_in.isoformat() if row.check_in else None,
+            check_out=row.check_out.isoformat() if row.check_out else None,
+        )
+        for row in rows
+        if row.staff is not None
+    ]
 
 
 @router.post("/rate")

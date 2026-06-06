@@ -31,6 +31,7 @@ export default function AdminNewUser() {
     tenant_owner_flat_label: "",
   });
   const [error, setError] = useState("");
+  const [importError, setImportError] = useState("");
   const [loading, setLoading] = useState(false);
   const [prefillLoading, setPrefillLoading] = useState(Boolean(editUserId));
   const [importing, setImporting] = useState(false);
@@ -111,18 +112,18 @@ export default function AdminNewUser() {
   async function onImport(e: FormEvent) {
     e.preventDefault();
     if (!token || !fileRef.current?.files?.[0]) {
-      setError("Choose an Excel file (.xlsx)");
+      setImportError("Choose an Excel file (.xlsx)");
       return;
     }
     setImporting(true);
-    setError("");
+    setImportError("");
     setImportResult(null);
     try {
       const res = await api.importUsers(token, fileRef.current.files[0]);
       setImportResult(res);
       fileRef.current.value = "";
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Import failed");
+      setImportError(err instanceof ApiError ? err.message : "Import failed");
     } finally {
       setImporting(false);
     }
@@ -258,9 +259,10 @@ export default function AdminNewUser() {
       {!editUserId && <form onSubmit={onImport} className="card">
         <h3 style={{ marginTop: 0 }}>Bulk import (Excel)</h3>
         <p className="muted">
-          Columns: <code>name</code>, <code>phone</code> (optional — auto-generated if blank),{" "}
-          <code>flat</code>, <code>Owner</code> or <code>Tenant</code> column, <code>email</code>.
-          Use <code>109/110</code> for duplex flats. Multiple phones: <code>9876543210 / 9876543211</code> (first is used).
+          Use <strong>Download template (.xlsx)</strong> below — do not use a custom Excel file.
+          Required column: <code>name</code>. Also: <code>phone</code> (optional), <code>flat</code>,{" "}
+          <code>Owner</code> / <code>Tenant</code> (or one <code>Owner Or Tenant</code> column), <code>email</code>.
+          Duplex flats: <code>109/110</code>. Multiple phones: <code>9876543210 / 9876543211</code>.
         </p>
         <button
           type="button"
@@ -274,6 +276,7 @@ export default function AdminNewUser() {
           <label>Excel file</label>
           <input ref={fileRef} type="file" accept=".xlsx,.xlsm" required />
         </div>
+        {importError && <p className="error">{importError}</p>}
         <button type="submit" className="btn btn-block" disabled={importing}>
           {importing ? "Importing…" : "Upload & create users"}
         </button>

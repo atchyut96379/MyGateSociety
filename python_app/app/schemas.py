@@ -571,3 +571,31 @@ class CreateEmergencyRequest(BaseModel):
     name: str
     role: str
     phone: str
+
+
+class GateLogEntry(BaseModel):
+    type: str
+    id: str
+    name: str
+    flat_label: str | None = None
+    check_in: str | None = None
+    check_out: str | None = None
+    status: str
+    detail: str | None = None
+
+
+class DailyGateLogsResponse(BaseModel):
+    date: str
+    visitors: list[GateLogEntry]
+    staff: list[GateLogEntry]
+    deliveries: list[GateLogEntry]
+
+
+class StaffAttendanceEntry(BaseModel):
+    id: str
+    staff_id: str
+    staff_name: str
+    staff_type: str
+    flat_label: str | None
+    check_in: str | None
+    check_out: str | None

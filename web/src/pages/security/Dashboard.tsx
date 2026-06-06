@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../../api/client";
-import type { Delivery, GateLookup, SosAlert, Vehicle, Visitor } from "../../api/types";
+import type { Delivery, GateLookup, SosAlert, StaffAttendanceEntry, Vehicle, Visitor } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import { GuardShell } from "../../components/Shell";
 
@@ -14,12 +14,18 @@ export default function SecurityDashboard() {
   const [lookupError, setLookupError] = useState("");
   const [last4, setLast4] = useState("");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [staffToday, setStaffToday] = useState<StaffAttendanceEntry[]>([]);
 
   function reload() {
     if (!token) return;
     api.visitors(token).then(setVisitors);
     api.deliveries(token).then(setDeliveries);
     api.sosAlerts(token).then(setSosAlerts);
+    api.staffAttendanceToday(token).then(setStaffToday);
+  }
+
+  function staffAttendance(staffId: string) {
+    return staffToday.find((s) => s.staff_id === staffId);
   }
 
   useEffect(() => {
@@ -79,6 +85,15 @@ export default function SecurityDashboard() {
     const id = lookup.record.id as string;
     await api.staffCheckIn(token, id);
     setOtpInput("");
+    reload();
+  }
+
+  async function actionStaffCheckOut(staffId?: string) {
+    const id = staffId ?? (lookup?.type === "staff" ? (lookup.record.id as string) : "");
+    if (!token || !id) return;
+    await api.staffCheckOut(token, id);
+    setOtpInput("");
+    reload();
   }
 
   async function searchVehicle() {
@@ -172,9 +187,18 @@ export default function SecurityDashboard() {
                 <button type="button" className="btn btn-secondary" onClick={() => actionDelivery("LEFT_AT_GATE")}>Left at gate</button>
               </>
             )}
-            {lookup.type === "staff" && (
-              <button type="button" className="btn" onClick={actionStaffCheckIn}>Check in staff</button>
-            )}
+            {lookup.type === "staff" && (() => {
+              const id = lookup.record.id as string;
+              const att = staffAttendance(id);
+              const inside = att?.check_in && !att?.check_out;
+              return inside ? (
+                <button type="button" className="btn btn-danger" onClick={() => actionStaffCheckOut()}>
+                  Check out staff
+                </button>
+              ) : (
+                <button type="button" className="btn" onClick={actionStaffCheckIn}>Check in staff</button>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -218,6 +242,26 @@ export default function SecurityDashboard() {
               <div key={v.id} className="list-row">
                 <span>{v.guest_name} → {v.flat_label}</span>
                 <button type="button" className="btn btn-danger" onClick={() => actionCheckOut(v.id)}>
+                  Check out
+                </button>
+              </div>
+            ))
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Staff inside (check out)</h3>
+        {staffToday.filter((s) => s.check_in && !s.check_out).length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>No staff checked in right now.</p>
+        ) : (
+          staffToday
+            .filter((s) => s.check_in && !s.check_out)
+            .map((s) => (
+              <div key={s.id} className="list-row">
+                <span>
+                  {s.staff_name} ({s.staff_type}) → {s.flat_label ?? "—"}
+                </span>
+                <button type="button" className="btn btn-danger" onClick={() => actionStaffCheckOut(s.staff_id)}>
                   Check out
                 </button>
               </div>

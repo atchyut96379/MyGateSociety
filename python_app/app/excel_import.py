@@ -7,18 +7,56 @@ from .models import User
 from .security import normalize_phone
 
 HEADER_ALIASES: dict[str, list[str]] = {
-    "name": ["name", "resident", "resident_name", "full_name"],
-    "phone": ["phone", "mobile", "mobile_number", "contact", "contact_number"],
-    "flat": ["flat", "flat_no", "flat_number", "flatno", "unit", "flat_no."],
+    "name": [
+        "name",
+        "resident",
+        "resident_name",
+        "residentname",
+        "full_name",
+        "fullname",
+        "member_name",
+        "member",
+    ],
+    "phone": [
+        "phone",
+        "mobile",
+        "mobile_number",
+        "mobile_no",
+        "mobileno",
+        "contact",
+        "contact_number",
+        "phone_number",
+    ],
+    "flat": [
+        "flat",
+        "flat_no",
+        "flat_number",
+        "flatno",
+        "flat_no.",
+        "unit",
+        "unit_no",
+        "flatno.",
+    ],
     "role": ["role", "user_role"],
-    "resident_type": ["resident_type", "residenttype", "type"],
+    "resident_type": [
+        "resident_type",
+        "residenttype",
+        "type",
+        "owner_or_tenant",
+        "owner/tenant",
+        "owner_tenant",
+        "owner_or_tenant_",
+        "resident_type_",
+    ],
     "committee_role": ["committee_role", "committee", "committee_role_"],
     "email": ["email", "e_mail"],
 }
 
 
 def _normalize_header(value: Any) -> str:
-    return str(value or "").strip().lower().replace(" ", "_")
+    raw = str(value or "").strip().lower()
+    raw = raw.replace("/", "_").replace("-", "_")
+    return re.sub(r"[^a-z0-9_]", "", raw.replace(" ", "_"))
 
 
 def _cell_str(value: Any) -> str:
@@ -30,10 +68,16 @@ def _cell_str(value: Any) -> str:
 
 
 def _find_header_row(rows: list[tuple]) -> int:
-    for idx, row in enumerate(rows[:5]):
-        for cell in row:
-            if _normalize_header(cell) in HEADER_ALIASES["name"]:
-                return idx
+    for idx, row in enumerate(rows[:10]):
+        normalized = [_normalize_header(cell) for cell in row if cell is not None]
+        if not normalized:
+            continue
+        has_name = any(n in HEADER_ALIASES["name"] for n in normalized)
+        has_flat = any(n in HEADER_ALIASES["flat"] for n in normalized)
+        if has_name and has_flat:
+            return idx
+        if has_name:
+            return idx
     return 0
 
 
@@ -117,7 +161,7 @@ def parse_resident_type(row: tuple, mapping: dict[str, Any]) -> str:
 def _map_resident_type_label(raw: str) -> str | None:
     if not raw:
         return None
-    key = raw.upper().replace(" ", "_").replace("-", "_")
+    key = raw.upper().replace(" ", "_").replace("-", "_").replace("/", "_")
     mapping = {
         "OWNER": "IN_HOUSE_OWNER",
         "IN_HOUSE_OWNER": "IN_HOUSE_OWNER",
@@ -126,7 +170,14 @@ def _map_resident_type_label(raw: str) -> str | None:
         "OUTHOUSE_OWNER": "OUT_HOUSE_OWNER",
         "TENANT": "TENANT",
     }
-    return mapping.get(key)
+    if key in mapping:
+        return mapping[key]
+    lowered = raw.strip().lower()
+    if lowered.startswith("owner"):
+        return "IN_HOUSE_OWNER"
+    if lowered.startswith("tenant"):
+        return "TENANT"
+    return None
 
 
 def parse_excel_row(

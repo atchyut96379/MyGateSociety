@@ -43,6 +43,7 @@ import AdminMoves from "./pages/admin/Moves";
 
 import AdminEmergency from "./pages/admin/Emergency";
 import AdminFlats from "./pages/admin/Flats";
+import AdminGateLogs from "./pages/admin/GateLogs";
 
 import ResidentDashboard from "./pages/resident/Dashboard";
 
@@ -137,6 +138,8 @@ export default function App() {
       <Route path="/admin/moves" element={<RequireAuth roles={["ADMIN", "COMMITTEE"]}><AdminMoves /></RequireAuth>} />
 
       <Route path="/admin/emergency" element={<RequireAuth roles={["ADMIN", "COMMITTEE"]}><AdminEmergency /></RequireAuth>} />
+
+      <Route path="/admin/gate-logs" element={<RequireAuth roles={["ADMIN", "COMMITTEE", "SECURITY"]}><AdminGateLogs /></RequireAuth>} />
 
 
 

@@ -10,6 +10,8 @@ import type {
   Complaint,
   BulkImportResponse,
   CreateUserResponse,
+  DailyGateLogs,
+  StaffAttendanceEntry,
   Delivery,
   DirectoryEntry,
   Document,
@@ -171,14 +173,27 @@ export const api = {
   async importUsers(token: string, file: File) {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${API_BASE}/users/import`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/users/import`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+    } catch {
+      throw new ApiError(
+        0,
+        "Cannot reach API. Check CORS_ORIGINS on App Service includes this website URL."
+      );
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const message = typeof data.detail === "string" ? data.detail : "Import failed";
+      const message =
+        typeof data.detail === "string"
+          ? data.detail
+          : Array.isArray(data.detail)
+            ? data.detail.map((d: { msg?: string }) => d.msg).join(", ")
+            : "Import failed — use Download template (.xlsx) from this page";
       throw new ApiError(res.status, message);
     }
     return data as BulkImportResponse;
@@ -227,6 +242,23 @@ export const api = {
 
   checkOutVisitor(token: string, id: string) {
     return request<Visitor>(`/visitors/${id}/check-out`, { method: "POST" }, token);
+  },
+
+  dailyGateLogs(token: string, date?: string) {
+    const q = date ? `?date=${encodeURIComponent(date)}` : "";
+    return request<DailyGateLogs>(`/gate/daily-logs${q}`, {}, token);
+  },
+
+  staffAttendanceToday(token: string) {
+    return request<StaffAttendanceEntry[]>("/staff/attendance/today", {}, token);
+  },
+
+  staffCheckOut(token: string, staffId: string) {
+    return request<{ ok: boolean; message: string }>(
+      `/staff/${staffId}/check-out`,
+      { method: "POST" },
+      token
+    );
   },
 
   updateDelivery(token: string, id: string, status: string) {

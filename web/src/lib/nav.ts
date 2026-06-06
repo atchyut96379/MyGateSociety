@@ -3,6 +3,7 @@ export const ADMIN_NAV = [
   { to: "/admin/finance", label: "Finance", icon: "📊" },
   { to: "/admin/complaints", label: "Help", icon: "🛠️" },
   { to: "/admin/more", label: "More", icon: "☰" },
+  { to: "/admin/gate-logs", label: "Gate log", icon: "📋" },
   { to: "/security", label: "Gate", icon: "🚧" },
 ];
 
@@ -18,6 +19,7 @@ export const ADMIN_MORE_LINKS = [
   { to: "/admin/flats", title: "All flats", icon: "🏢" },
   { to: "/admin/users", title: "Users", icon: "👥" },
   { to: "/admin/guards/new", title: "Create guards", icon: "🛡️" },
+  { to: "/admin/gate-logs", title: "Gate daily logs", icon: "📋" },
   { to: "/admin/notices", title: "Notices", icon: "📢" },
   { to: "/admin/bills", title: "Collection Dashboard", icon: "🧾" },
   { to: "/admin/finance", title: "Finance", icon: "📊" },
