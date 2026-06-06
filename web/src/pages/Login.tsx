@@ -15,6 +15,8 @@ const ALL_ROLES: { value: Role; label: string }[] = [
 export default function LoginPage() {
   const { login, user, logout } = useAuth();
   const [bootstrapMode, setBootstrapMode] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("ADMIN");
@@ -22,13 +24,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.loginConfig().then((cfg) => {
-      setBootstrapMode(cfg.bootstrap_mode);
-      if (cfg.bootstrap_mode) {
-        setPhone(cfg.bootstrap_login_id);
-        setRole("ADMIN");
-      }
-    }).catch(() => setBootstrapMode(false));
+    api
+      .loginConfig()
+      .then((cfg) => {
+        setBootstrapMode(cfg.bootstrap_mode);
+        if (cfg.bootstrap_mode) {
+          setPhone(cfg.bootstrap_login_id);
+          setRole("ADMIN");
+        }
+      })
+      .catch(() => {
+        setConfigError(
+          "Cannot reach the API. Add this site URL to CORS_ORIGINS on Azure App Service, then restart the API."
+        );
+      })
+      .finally(() => setConfigLoading(false));
   }, []);
 
   const canSubmit = phone.trim().length > 0 && password.length > 0;
@@ -56,7 +66,15 @@ export default function LoginPage() {
         {SOCIETY_NAME}
       </h1>
 
-      {bootstrapMode ? (
+      {configLoading ? (
+        <p className="muted" style={{ textAlign: "center", fontSize: "0.9rem" }}>
+          Checking first-time setup…
+        </p>
+      ) : configError ? (
+        <div className="card" style={{ background: "#fef2f2", borderColor: "#fca5a5", marginBottom: "1rem" }}>
+          <p className="error" style={{ margin: 0, fontSize: "0.85rem" }}>{configError}</p>
+        </div>
+      ) : bootstrapMode ? (
         <p className="muted" style={{ textAlign: "center", fontSize: "0.9rem" }}>
           <strong>First-time Secretary setup.</strong> Use the default login below once, then set your profile and mobile number.
         </p>
@@ -106,6 +124,9 @@ export default function LoginPage() {
 
       <div className="card" style={{ marginTop: "1.5rem" }}>
         <h2 style={{ marginTop: 0 }}>Sign in</h2>
+        {configLoading ? (
+          <p className="muted">Loading sign-in options…</p>
+        ) : (
         <form onSubmit={onSubmit}>
           <div className="field">
             <label>{bootstrapMode ? "Login ID" : "Mobile number"}</label>
@@ -154,6 +175,7 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Open app"}
           </button>
         </form>
+        )}
       </div>
 
       <p style={{ textAlign: "center", marginTop: "1rem" }}>
