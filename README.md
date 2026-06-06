@@ -22,6 +22,11 @@ MyGateSociety/
 └── README.md
 ```
 
+## Deploy to Azure (production)
+
+Step-by-step guide for **Azure** + Hostinger domain **`marvelrocks.in`**:  
+→ **[docs/AZURE_DEPLOY.md](docs/AZURE_DEPLOY.md)**
+
 ## Requirements
 
 - Python 3.11+

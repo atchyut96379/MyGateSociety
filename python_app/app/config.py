@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
+    cors_origins: str = "*"
 
     model_config = SettingsConfigDict(
         env_file=".env",
