@@ -141,11 +141,7 @@ export default function AdminNewUser() {
           : err instanceof Error
             ? err.message
             : "Import failed";
-      setImportError(
-        msg.includes("name") || msg.includes("template")
-          ? msg
-          : `${msg} — use Download template (.xlsx) on this page (not ResidentsImportTemplate.xlsx).`
-      );
+      setImportError(msg);
     } finally {
       setImporting(false);
     }
@@ -293,11 +289,10 @@ export default function AdminNewUser() {
           </p>
         )}
         <p className="muted">
-          Excel format: row 1 — <code>name</code>, <code>phone</code>, <code>flat</code>,{" "}
-          <code>Resident Type</code>, <code>committee_role</code>, <code>email</code>.
-          Row 2 — <code>Owner</code> | <code>Tenant</code> under Resident Type.
-          Data from row 3. Put <code>Owner</code> or <code>Tenant</code> in the matching column.
-          Duplex: <code>109/110</code>. Multiple phones: <code>9876543210 / 9876543211</code>.
+          Row 1: <code>name</code>, <code>phone</code>, <code>flat</code>, <code>Resident Type</code>{" "}
+          (<code>Owner</code> or <code>Tenant</code>), <code>committee_role</code>, <code>email</code>.
+          Data from row 2. Phone optional. Duplex: <code>109/110</code>.
+          Multiple phones: <code>9876543210 / 9876543211</code>.
         </p>
         <button
           type="button"

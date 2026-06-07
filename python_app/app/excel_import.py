@@ -81,26 +81,42 @@ def _find_header_row(rows: list[tuple]) -> int:
     return 0
 
 
+def _is_owner_tenant_subheader_row(row: tuple, mapping: dict[str, Any]) -> bool:
+    """True only for row 2 labels like Owner | Tenant (not data rows)."""
+    fields = mapping["fields"]
+    if _get_cell(row, fields.get("name")):
+        return False
+    if _get_cell(row, fields.get("flat")):
+        return False
+    if _get_cell(row, fields.get("phone")):
+        return False
+
+    owner_idx: int | None = None
+    tenant_idx: int | None = None
+    for i, raw in enumerate(row):
+        nh = _normalize_header(raw)
+        if nh == "owner":
+            owner_idx = i
+        elif nh == "tenant":
+            tenant_idx = i
+    return owner_idx is not None and tenant_idx is not None
+
+
 def resolve_import_layout(rows: list[tuple]) -> tuple[int, int, dict[str, Any]]:
     """Return (header_row_index, first_data_row_index, column_mapping)."""
     header_idx = _find_header_row(rows)
     mapping = build_column_map(rows[header_idx])
     data_start = header_idx + 1
 
-    if data_start < len(rows):
+    if data_start < len(rows) and _is_owner_tenant_subheader_row(rows[data_start], mapping):
         sub_row = rows[data_start]
-        owner_idx: int | None = None
-        tenant_idx: int | None = None
         for i, raw in enumerate(sub_row):
             nh = _normalize_header(raw)
             if nh == "owner":
-                owner_idx = i
+                mapping["owner_col"] = i
             elif nh == "tenant":
-                tenant_idx = i
-        if owner_idx is not None and tenant_idx is not None:
-            mapping["owner_col"] = owner_idx
-            mapping["tenant_col"] = tenant_idx
-            data_start = header_idx + 2
+                mapping["tenant_col"] = i
+        data_start = header_idx + 2
 
     return header_idx, data_start, mapping
 
@@ -122,11 +138,16 @@ def build_column_map(header_row: tuple) -> dict[str, Any]:
         if nh == "tenant":
             tenant_col = i
 
-    # "Resident Type" merged header often sits only on the first of two columns (Owner | Tenant).
+    # Two-column Owner | Tenant layout (row 2 sub-headers). Single-column "Resident Type"
+    # keeps values Owner/Tenant in one cell — do not split when next header is committee/email.
     if owner_col is None and tenant_col is None and "resident_type" in col_map:
         idx = col_map["resident_type"]
-        owner_col = idx
-        tenant_col = idx + 1
+        next_hdr = ""
+        if idx + 1 < len(header_row):
+            next_hdr = _normalize_header(header_row[idx + 1])
+        if next_hdr not in {"", "committee_role", "committee", "email"}:
+            owner_col = idx
+            tenant_col = idx + 1
 
     return {"fields": col_map, "owner_col": owner_col, "tenant_col": tenant_col}
 

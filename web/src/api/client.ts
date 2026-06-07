@@ -78,7 +78,8 @@ async function request<T>(
         "Server is not responding. Check that the API is running (python_app/dev.ps1) and try again."
       );
     }
-    throw err;
+    const msg = err instanceof Error ? err.message : "Network error";
+    throw new ApiError(0, msg);
   } finally {
     clearTimeout(timer);
   }
@@ -175,36 +176,42 @@ export const api = {
   },
 
   async importUsers(token: string, file: File) {
-    const file_base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result;
-        if (typeof dataUrl !== "string") {
-          reject(new ApiError(400, "Could not read the Excel file"));
-          return;
-        }
-        const encoded = dataUrl.split(",")[1];
-        if (!encoded) {
-          reject(new ApiError(400, "Could not read the Excel file"));
-          return;
-        }
-        resolve(encoded);
-      };
-      reader.onerror = () => reject(new ApiError(400, "Could not read the Excel file"));
-      reader.readAsDataURL(file);
-    });
-    return request<BulkImportResponse>(
-      "/users/bulk-json",
-      {
+    const form = new FormData();
+    form.append("file", file);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 300_000);
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/users/bulk-upload`, {
         method: "POST",
-        body: JSON.stringify({
-          filename: file.name,
-          file_base64,
-        }),
-      },
-      token,
-      120_000
-    );
+        mode: "cors",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new ApiError(408, "Import timed out — try fewer rows or restart the API and retry.");
+      }
+      const msg = err instanceof Error ? err.message : "Network error";
+      throw new ApiError(
+        0,
+        `${msg}. Hard-refresh (Ctrl+F5), restart marvelrocks-api in Azure, then retry.`
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const message =
+        typeof data.detail === "string"
+          ? data.detail
+          : Array.isArray(data.detail)
+            ? data.detail.map((d: { msg?: string }) => d.msg).join(", ")
+            : "Import failed";
+      throw new ApiError(res.status, message);
+    }
+    return data as BulkImportResponse;
   },
 
   visitors(token: string) {

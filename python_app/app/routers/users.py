@@ -166,11 +166,10 @@ def download_import_template(_: User = Depends(require_secretary_ready)):
     wb = Workbook()
     ws = wb.active
     ws.title = "Users"
-    ws.append(["name", "phone", "flat", "Resident Type", "", "committee_role", "email"])
-    ws.append(["", "", "", "Owner", "Tenant", "", ""])
-    ws.append(["Rama Rao", "9876543210", "119", "Owner", "", "", ""])
-    ws.append(["Tenant Example", "", "120", "", "Tenant", "", ""])
-    ws.append(["Duplex Owner", "9494974697 / 9493308460", "109/110", "Owner", "", "", ""])
+    ws.append(["name", "phone", "flat", "Resident Type", "committee_role", "email"])
+    ws.append(["Rama Rao", "9876543210", "119", "Owner", "", ""])
+    ws.append(["Tenant Example", "", "120", "Tenant", "", ""])
+    ws.append(["Duplex Owner", "9494974697 / 9493308460", "109/110", "Owner", "", ""])
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
