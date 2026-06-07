@@ -12,6 +12,18 @@ def razorpay_configured() -> bool:
     return bool(settings.razorpay_key_id and settings.razorpay_key_secret)
 
 
+def razorpay_mode() -> str:
+    """live, test, or off (not configured)."""
+    if not razorpay_configured():
+        return "off"
+    key_id = settings.razorpay_key_id
+    if key_id.startswith("rzp_live_"):
+        return "live"
+    if key_id.startswith("rzp_test_"):
+        return "test"
+    return "unknown"
+
+
 def get_razorpay_client() -> razorpay.Client:
     if not razorpay_configured():
         raise HTTPException(
@@ -69,3 +81,20 @@ def verify_payment_signature(
 def fetch_order(order_id: str) -> dict:
     client = get_razorpay_client()
     return client.order.fetch(order_id)
+
+
+def verify_webhook_signature(body: bytes, signature: str) -> None:
+    if not settings.razorpay_webhook_secret:
+        raise HTTPException(
+            status_code=503,
+            detail="Razorpay webhook secret is not configured",
+        )
+    client = get_razorpay_client()
+    try:
+        client.utility.verify_webhook_signature(
+            body.decode("utf-8"),
+            signature,
+            settings.razorpay_webhook_secret,
+        )
+    except razorpay.errors.SignatureVerificationError as exc:
+        raise HTTPException(status_code=400, detail="Invalid webhook signature") from exc

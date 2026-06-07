@@ -2,6 +2,9 @@ python_app/.env
 python_app/.venv/
 web/node_modules/
 web/dist/
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
 __pycache__/
 *.pyc
 .env

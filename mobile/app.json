@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Marvel Rocks Society",
+    "slug": "marvel-rocks-society",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.marvelrocks.society"
+    },
+    "android": {
+      "package": "in.marvelrocks.society",
+      "adaptiveIcon": {
+        "backgroundColor": "#0d6e4f",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "owner": "atchyut2025",
+    "extra": {
+      "eas": {
+        "projectId": "1b6f6e51-c864-48b4-9b8e-a70bf68f86a9"
+      }
+    }
+  }
+}

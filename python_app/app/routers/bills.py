@@ -20,6 +20,7 @@ from ..razorpay_client import (
     create_maintenance_order,
     fetch_order,
     razorpay_configured,
+    razorpay_mode,
     verify_payment_signature,
 )
 from ..schemas import (
@@ -28,6 +29,7 @@ from ..schemas import (
     CollectionSummaryResponse,
     GenerateBillsRequest,
     PayBillRequest,
+    PaymentConfigResponse,
     RazorpayOrderResponse,
     RazorpayVerifyRequest,
 )
@@ -160,6 +162,24 @@ def _get_unpaid_bill(bill_id: str, db: Session) -> MaintenanceBill:
     return bill
 
 
+def _payment_recorder_for_bill(db: Session, bill: MaintenanceBill) -> User:
+    if bill.flat_id:
+        resident = _flat_resident(db, bill.flat_id)
+        if resident:
+            return resident
+    society_id = bill.flat.society_id if bill.flat else None
+    if society_id:
+        admin = (
+            db.query(User)
+            .filter(User.society_id == society_id, User.role == "ADMIN")
+            .order_by(User.is_main_admin.desc(), User.created_at.asc())
+            .first()
+        )
+        if admin:
+            return admin
+    raise HTTPException(status_code=500, detail="No user available to record payment")
+
+
 def _record_bill_payment(
     db: Session,
     bill: MaintenanceBill,
@@ -186,6 +206,42 @@ def _record_bill_payment(
     db.commit()
     db.refresh(bill)
     return bill_response(bill, db)
+
+
+def finalize_razorpay_payment(
+    db: Session,
+    *,
+    bill_id: str,
+    order_id: str,
+    payment_id: str,
+    recorder: User | None = None,
+) -> BillResponse | None:
+    """Mark bill paid from a Razorpay order. Idempotent if already paid."""
+    bill = (
+        db.query(MaintenanceBill)
+        .options(joinedload(MaintenanceBill.flat))
+        .filter(MaintenanceBill.id == bill_id)
+        .first()
+    )
+    if bill is None:
+        return None
+    if bill.status == "PAID":
+        return bill_response(bill, db)
+
+    order = fetch_order(order_id)
+    if order.get("receipt") != bill_id[:40]:
+        raise HTTPException(status_code=400, detail="Order does not match this bill")
+    if int(order.get("amount", 0)) != int(round(bill.amount * 100)):
+        raise HTTPException(status_code=400, detail="Paid amount does not match bill")
+
+    payer = recorder or _payment_recorder_for_bill(db, bill)
+    return _record_bill_payment(
+        db,
+        bill,
+        payer,
+        method="RAZORPAY",
+        reference=payment_id,
+    )
 
 
 @router.get("/collection", response_model=CollectionDashboardResponse)
@@ -522,6 +578,15 @@ def download_receipt(
 
 
 
+@router.get("/payment-config", response_model=PaymentConfigResponse)
+def payment_config():
+    return PaymentConfigResponse(
+        enabled=razorpay_configured(),
+        mode=razorpay_mode(),
+        webhook_configured=bool(settings.razorpay_webhook_secret),
+    )
+
+
 @router.post("/{bill_id}/razorpay-order", response_model=RazorpayOrderResponse)
 def create_razorpay_order(
     bill_id: str,
@@ -579,18 +644,12 @@ def verify_razorpay_payment(
         signature=payload.razorpay_signature,
     )
 
-    order = fetch_order(payload.razorpay_order_id)
-    if order.get("receipt") != bill.id[:40]:
-        raise HTTPException(status_code=400, detail="Order does not match this bill")
-    if int(order.get("amount", 0)) != int(round(bill.amount * 100)):
-        raise HTTPException(status_code=400, detail="Paid amount does not match bill")
-
-    return _record_bill_payment(
+    return finalize_razorpay_payment(
         db,
-        bill,
-        current_user,
-        method="RAZORPAY",
-        reference=payload.razorpay_payment_id,
+        bill_id=bill.id,
+        order_id=payload.razorpay_order_id,
+        payment_id=payload.razorpay_payment_id,
+        recorder=current_user,
     )
 
 

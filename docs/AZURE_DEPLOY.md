@@ -177,8 +177,9 @@ App Service → **marvelrocks-api** → **Settings** → **Environment variables
 | `JWT_SECRET` | Long random string (32+ characters) — **not** `change-this-in-production` |
 | `ENVIRONMENT` | `production` |
 | `CORS_ORIGINS` | `https://purple-mushroom-06360a100.7.azurestaticapps.net,https://www.marvelrocks.in,https://marvelrocks.in` |
-| `RAZORPAY_KEY_ID` | Your Razorpay key |
-| `RAZORPAY_KEY_SECRET` | Your Razorpay secret |
+| `RAZORPAY_KEY_ID` | Razorpay key (`rzp_test_…` while testing, `rzp_live_…` when live) |
+| `RAZORPAY_KEY_SECRET` | Razorpay secret (same mode as key) |
+| `RAZORPAY_WEBHOOK_SECRET` | From Razorpay → Webhooks (see [RAZORPAY_LIVE.md](./RAZORPAY_LIVE.md)) |
 | `WEBSITES_PORT` | `8000` |
 
 **Save** and **Restart** the app.
@@ -335,9 +336,10 @@ If Hostinger has no ALIAS for apex:
 
 ### Razorpay
 
-In [Razorpay Dashboard](https://dashboard.razorpay.com) → **Settings** → **Webhooks** (if you add webhooks later):
+Full guide: **[RAZORPAY_LIVE.md](./RAZORPAY_LIVE.md)** (test → live, webhook URL, Android later).
 
-- Allowed origins / redirect URLs should include `https://www.marvelrocks.in`
+- Webhook URL: `https://api.marvelrocks.in/webhooks/razorpay` (event: `payment.captured`)
+- Website URL in Razorpay dashboard: `https://www.marvelrocks.in`
 
 ### Monitoring
 

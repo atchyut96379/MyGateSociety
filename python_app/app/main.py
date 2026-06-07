@@ -29,6 +29,7 @@ from .routers import (
     users,
     vehicles,
     visitors,
+    webhooks,
 )
 
 app = FastAPI(title=settings.app_name)
@@ -62,6 +63,7 @@ app.include_router(kids_exit.router)
 app.include_router(emergency.router)
 app.include_router(accounts.router)
 app.include_router(bills.router)
+app.include_router(webhooks.router)
 app.include_router(expenses.router)
 app.include_router(transactions.router)
 app.include_router(amenities.router)

@@ -3,6 +3,7 @@ import type {
   Amenity,
   Bill,
   CollectionDashboard,
+  PaymentConfig,
   RazorpayOrder,
   RazorpayPaymentResponse,
   SetupVehicleInput,
@@ -446,6 +447,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ method, reference }),
     }, token);
+  },
+
+  paymentConfig() {
+    return request<PaymentConfig>("/bills/payment-config");
   },
 
   createRazorpayOrder(token: string, billId: string) {

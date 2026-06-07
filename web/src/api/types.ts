@@ -219,6 +219,12 @@ export interface RazorpayPaymentResponse {
   razorpay_signature: string;
 }
 
+export interface PaymentConfig {
+  enabled: boolean;
+  mode: string;
+  webhook_configured: boolean;
+}
+
 export interface Expense {
   id: string;
   title: string;

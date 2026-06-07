@@ -406,6 +406,12 @@ class RazorpayVerifyRequest(BaseModel):
     razorpay_signature: str
 
 
+class PaymentConfigResponse(BaseModel):
+    enabled: bool
+    mode: str
+    webhook_configured: bool
+
+
 class GenerateBillsRequest(BaseModel):
     month: str | None = None
 
