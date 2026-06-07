@@ -81,6 +81,30 @@ def _find_header_row(rows: list[tuple]) -> int:
     return 0
 
 
+def resolve_import_layout(rows: list[tuple]) -> tuple[int, int, dict[str, Any]]:
+    """Return (header_row_index, first_data_row_index, column_mapping)."""
+    header_idx = _find_header_row(rows)
+    mapping = build_column_map(rows[header_idx])
+    data_start = header_idx + 1
+
+    if data_start < len(rows):
+        sub_row = rows[data_start]
+        owner_idx: int | None = None
+        tenant_idx: int | None = None
+        for i, raw in enumerate(sub_row):
+            nh = _normalize_header(raw)
+            if nh == "owner":
+                owner_idx = i
+            elif nh == "tenant":
+                tenant_idx = i
+        if owner_idx is not None and tenant_idx is not None:
+            mapping["owner_col"] = owner_idx
+            mapping["tenant_col"] = tenant_idx
+            data_start = header_idx + 2
+
+    return header_idx, data_start, mapping
+
+
 def build_column_map(header_row: tuple) -> dict[str, Any]:
     col_map: dict[str, int] = {}
     owner_col: int | None = None
@@ -199,6 +223,13 @@ def parse_excel_row(
 
     if name.lower() in {"owner", "tenant", "name"} and not flat_label:
         return None
+
+    # Skip sub-header row cells (Owner | Tenant) when accidentally read as data.
+    if not name and not flat_label and not phone_raw:
+        owner_only = _get_cell(row, mapping.get("owner_col")).lower()
+        tenant_only = _get_cell(row, mapping.get("tenant_col")).lower()
+        if owner_only in {"owner", "tenant"} or tenant_only in {"owner", "tenant"}:
+            return None
 
     if not name:
         return {"error": "Name is required", "row": row_num, "name": "—", "phone": phone_raw}

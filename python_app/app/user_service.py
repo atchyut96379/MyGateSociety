@@ -265,18 +265,24 @@ def update_user_login(
 
 def resolve_flat_id(db: Session, society_id: str, flat_label: str) -> str:
     label = str(flat_label).strip()
-    flat = (
-        db.query(Flat)
-        .filter(Flat.society_id == society_id, Flat.label == label)
-        .first()
-    )
-    if flat is None:
-        alt = label.replace("-", "/")
+    if isinstance(flat_label, float) and flat_label.is_integer():
+        label = str(int(flat_label))
+    candidates = [label, label.replace("-", "/"), label.replace("/", "-")]
+    if label.isdigit():
+        candidates.append(str(int(label)))
+    seen: set[str] = set()
+    flat = None
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
         flat = (
             db.query(Flat)
-            .filter(Flat.society_id == society_id, Flat.label == alt)
+            .filter(Flat.society_id == society_id, Flat.label == candidate)
             .first()
         )
+        if flat is not None:
+            break
     if flat is None:
         raise HTTPException(status_code=400, detail=f"Flat not found: {label}")
     return flat.id

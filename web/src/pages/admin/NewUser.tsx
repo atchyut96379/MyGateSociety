@@ -129,6 +129,10 @@ export default function AdminNewUser() {
     try {
       const res = await api.importUsers(token, fileRef.current.files[0]);
       setImportResult(res);
+      if (res.failed > 0 && res.created === 0) {
+        const firstErr = res.results.find((r) => !r.ok)?.error;
+        setImportError(firstErr ? `All rows failed. Example: ${firstErr}` : "All rows failed — check flat numbers.");
+      }
       fileRef.current.value = "";
     } catch (err) {
       const msg =
@@ -289,10 +293,11 @@ export default function AdminNewUser() {
           </p>
         )}
         <p className="muted">
-          Use <strong>Download template (.xlsx)</strong> below — do not use a custom Excel file.
-          Required column: <code>name</code>. Also: <code>phone</code> (optional), <code>flat</code>,{" "}
-          <code>Owner</code> / <code>Tenant</code> (or one <code>Owner Or Tenant</code> column), <code>email</code>.
-          Duplex flats: <code>109/110</code>. Multiple phones: <code>9876543210 / 9876543211</code>.
+          Excel format: row 1 — <code>name</code>, <code>phone</code>, <code>flat</code>,{" "}
+          <code>Resident Type</code>, <code>committee_role</code>, <code>email</code>.
+          Row 2 — <code>Owner</code> | <code>Tenant</code> under Resident Type.
+          Data from row 3. Put <code>Owner</code> or <code>Tenant</code> in the matching column.
+          Duplex: <code>109/110</code>. Multiple phones: <code>9876543210 / 9876543211</code>.
         </p>
         <button
           type="button"

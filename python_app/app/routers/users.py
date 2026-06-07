@@ -10,10 +10,9 @@ from sqlalchemy.orm import Session
 from ..constants import COMMITTEE_ROLE_LABELS, COMMITTEE_ROLES
 from ..database import get_db
 from ..excel_import import (
-    _find_header_row,
-    build_column_map,
     parse_excel_row,
     parse_phone_value,
+    resolve_import_layout,
 )
 from ..models import User
 from ..schemas import (
@@ -167,7 +166,8 @@ def download_import_template(_: User = Depends(require_secretary_ready)):
     wb = Workbook()
     ws = wb.active
     ws.title = "Users"
-    ws.append(["name", "phone", "flat", "Owner", "Tenant", "committee_role", "email"])
+    ws.append(["name", "phone", "flat", "Resident Type", "", "committee_role", "email"])
+    ws.append(["", "", "", "Owner", "Tenant", "", ""])
     ws.append(["Rama Rao", "9876543210", "119", "Owner", "", "", ""])
     ws.append(["Tenant Example", "", "120", "", "Tenant", "", ""])
     ws.append(["Duplex Owner", "9494974697 / 9493308460", "109/110", "Owner", "", "", ""])
@@ -200,8 +200,7 @@ def _import_users_from_bytes(
     if len(rows) < 2:
         raise HTTPException(status_code=400, detail="Excel file has no data rows")
 
-    header_idx = _find_header_row(rows)  # noqa: SLF001
-    mapping = build_column_map(rows[header_idx])
+    header_idx, data_start, mapping = resolve_import_layout(rows)
 
     if "name" not in mapping["fields"]:
         found = [str(c).strip() for c in rows[header_idx] if c is not None and str(c).strip()]
@@ -217,7 +216,7 @@ def _import_users_from_bytes(
     results: list[BulkImportRowResult] = []
     created = 0
 
-    for row_num, row in enumerate(rows[header_idx + 1 :], start=header_idx + 2):
+    for row_num, row in enumerate(rows[data_start:], start=data_start + 1):
         if not any(row):
             continue
         parsed = parse_excel_row(row, row_num, mapping)
