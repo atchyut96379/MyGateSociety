@@ -145,7 +145,11 @@ export default function AdminNewUser() {
           : err instanceof Error
             ? err.message
             : "Import failed";
-      setImportError(msg);
+      setImportError(
+        msg.includes("UNIQUE KEY") || msg.includes("duplicate key")
+          ? "Database error: duplicate email/phone. Empty emails are now auto-filled — restart API, refresh, and import again."
+          : msg
+      );
     } finally {
       setImporting(false);
     }

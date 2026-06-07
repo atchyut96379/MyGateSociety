@@ -7,6 +7,14 @@ from .security import hash_password, normalize_phone
 from .utils import default_user_password, new_id
 
 
+def resolve_user_email(email: str | None, phone: str) -> str:
+    """SQL Server UNIQUE allows only one NULL email — use a stable placeholder when blank."""
+    cleaned = (email or "").strip()
+    if cleaned:
+        return cleaned
+    return f"{phone}@residents.marvelrocks.in"
+
+
 def validate_create_user_payload(payload, db: Session) -> None:
     if payload.role == "RESIDENT":
         if not payload.flat_id:
@@ -87,7 +95,7 @@ def create_user_record(
     user = User(
         id=new_id(),
         phone=phone,
-        email=payload.email or None,
+        email=resolve_user_email(payload.email, phone),
         password_hash=hash_password(plain_password),
         name=payload.name.strip(),
         role=payload.role,
