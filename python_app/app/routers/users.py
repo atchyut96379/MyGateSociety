@@ -1,3 +1,4 @@
+import base64
 import io
 from typing import Any
 
@@ -18,6 +19,7 @@ from ..models import User
 from ..schemas import (
     BulkImportResponse,
     BulkImportRowResult,
+    BulkUploadJsonRequest,
     CreateUserRequest,
     CreateUserResponse,
     CredentialsResponse,
@@ -179,15 +181,15 @@ def download_import_template(_: User = Depends(require_secretary_ready)):
     )
 
 
-async def _import_users_from_excel(
-    file: UploadFile,
+def _import_users_from_bytes(
+    content: bytes,
+    filename: str,
     admin: User,
     db: Session,
 ) -> BulkImportResponse:
-    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
+    if not filename or not filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(status_code=400, detail="Upload an Excel file (.xlsx)")
 
-    content = await file.read()
     try:
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     except Exception as exc:
@@ -229,6 +231,28 @@ async def _import_users_from_excel(
     db.commit()
     failed = len(results) - created
     return BulkImportResponse(created=created, failed=failed, results=results)
+
+
+async def _import_users_from_excel(
+    file: UploadFile,
+    admin: User,
+    db: Session,
+) -> BulkImportResponse:
+    content = await file.read()
+    return _import_users_from_bytes(content, file.filename or "", admin, db)
+
+
+@router.post("/bulk-json", response_model=BulkImportResponse)
+def bulk_upload_users_json(
+    payload: BulkUploadJsonRequest,
+    admin: User = Depends(require_secretary_ready),
+    db: Session = Depends(get_db),
+):
+    try:
+        content = base64.b64decode(payload.file_base64, validate=True)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid file data") from exc
+    return _import_users_from_bytes(content, payload.filename, admin, db)
 
 
 @router.post("/bulk-upload", response_model=BulkImportResponse)

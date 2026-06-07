@@ -121,6 +121,11 @@ class BulkImportResponse(BaseModel):
     results: list[BulkImportRowResult]
 
 
+class BulkUploadJsonRequest(BaseModel):
+    filename: str
+    file_base64: str
+
+
 class CreateVisitorRequest(BaseModel):
     guest_name: str
     guest_phone: str | None = None

@@ -175,47 +175,25 @@ export const api = {
   },
 
   async importUsers(token: string, file: File) {
-    const form = new FormData();
-    form.append("file", file);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 120_000);
-    let res: Response;
-    try {
-      res = await fetch(`${API_BASE}/users/bulk-upload`, {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return request<BulkImportResponse>(
+      "/users/bulk-json",
+      {
         method: "POST",
-        mode: "cors",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-        signal: controller.signal,
-      });
-    } catch (err) {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "this website";
-      if (err instanceof DOMException && err.name === "AbortError") {
-        throw new ApiError(408, "Import timed out. Try again with fewer rows.");
-      }
-      const hint =
-        err instanceof Error && /failed to fetch/i.test(err.message)
-          ? ` Try disabling ad blockers for ${origin}, or hard-refresh (Ctrl+F5).`
-          : "";
-      throw new ApiError(
-        0,
-        `Cannot reach API at ${API_BASE}.${hint} If needed, add "${origin}" to CORS_ORIGINS and restart the API.`
-      );
-    } finally {
-      clearTimeout(timer);
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const message =
-        typeof data.detail === "string"
-          ? data.detail
-          : Array.isArray(data.detail)
-            ? data.detail.map((d: { msg?: string }) => d.msg).join(", ")
-            : "Import failed — use Download template (.xlsx) from this page";
-      throw new ApiError(res.status, message);
-    }
-    return data as BulkImportResponse;
+        body: JSON.stringify({
+          filename: file.name,
+          file_base64: btoa(binary),
+        }),
+      },
+      token,
+      120_000
+    );
   },
 
   visitors(token: string) {
