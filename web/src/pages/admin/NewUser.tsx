@@ -131,7 +131,17 @@ export default function AdminNewUser() {
       setImportResult(res);
       fileRef.current.value = "";
     } catch (err) {
-      setImportError(err instanceof ApiError ? err.message : "Import failed");
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Import failed";
+      setImportError(
+        msg.includes("name") || msg.includes("template")
+          ? msg
+          : `${msg} — use Download template (.xlsx) on this page (not ResidentsImportTemplate.xlsx).`
+      );
     } finally {
       setImporting(false);
     }

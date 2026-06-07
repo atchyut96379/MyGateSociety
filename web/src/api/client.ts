@@ -175,20 +175,31 @@ export const api = {
   },
 
   async importUsers(token: string, file: File) {
-    const buffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
+    const file_base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        if (typeof dataUrl !== "string") {
+          reject(new ApiError(400, "Could not read the Excel file"));
+          return;
+        }
+        const encoded = dataUrl.split(",")[1];
+        if (!encoded) {
+          reject(new ApiError(400, "Could not read the Excel file"));
+          return;
+        }
+        resolve(encoded);
+      };
+      reader.onerror = () => reject(new ApiError(400, "Could not read the Excel file"));
+      reader.readAsDataURL(file);
+    });
     return request<BulkImportResponse>(
       "/users/bulk-json",
       {
         method: "POST",
         body: JSON.stringify({
           filename: file.name,
-          file_base64: btoa(binary),
+          file_base64,
         }),
       },
       token,
