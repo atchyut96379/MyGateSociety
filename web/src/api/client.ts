@@ -9,6 +9,7 @@ import type {
   Booking,
   Complaint,
   BulkImportResponse,
+  BulkImportRowResult,
   CreateUserResponse,
   DailyGateLogs,
   StaffAttendanceEntry,
@@ -175,43 +176,69 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
-  async importUsers(token: string, file: File) {
-    const form = new FormData();
-    form.append("file", file);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 300_000);
-    let res: Response;
+  importRow(token: string, body: Record<string, unknown>) {
+    return request<BulkImportRowResult>("/users/import-row", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token);
+  },
+
+  async importUsers(
+    token: string,
+    file: File,
+    onProgress?: (done: number, total: number) => void
+  ) {
+    const { parseResidentsExcel } = await import("../lib/parseResidentsExcel");
+    const buffer = await file.arrayBuffer();
+    let rows;
     try {
-      res = await fetch(`${API_BASE}/users/bulk-upload`, {
-        method: "POST",
-        mode: "cors",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-        signal: controller.signal,
-      });
+      rows = parseResidentsExcel(buffer);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        throw new ApiError(408, "Import timed out — try fewer rows or restart the API and retry.");
+      throw new ApiError(400, err instanceof Error ? err.message : "Could not read Excel file");
+    }
+    if (rows.length === 0) {
+      throw new ApiError(400, "No data rows found in Excel file");
+    }
+
+    const results: BulkImportRowResult[] = [];
+    let created = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      onProgress?.(i + 1, rows.length);
+      if (row.error) {
+        results.push({
+          row: row.row,
+          name: row.name,
+          phone: row.phone_raw,
+          ok: false,
+          error: row.error,
+        });
+        continue;
       }
-      const msg = err instanceof Error ? err.message : "Network error";
-      throw new ApiError(
-        0,
-        `${msg}. Hard-refresh (Ctrl+F5), restart marvelrocks-api in Azure, then retry.`
-      );
-    } finally {
-      clearTimeout(timer);
+      try {
+        const result = await this.importRow(token, {
+          row: row.row,
+          name: row.name,
+          phone_raw: row.phone_raw,
+          flat_label: row.flat_label,
+          resident_type: row.resident_type,
+          committee_role: row.committee_role,
+          email: row.email,
+          role: row.role,
+        });
+        results.push(result);
+        if (result.ok) created += 1;
+      } catch (err) {
+        results.push({
+          row: row.row,
+          name: row.name,
+          phone: row.phone_raw,
+          ok: false,
+          error: err instanceof ApiError ? err.message : "Request failed",
+        });
+      }
     }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const message =
-        typeof data.detail === "string"
-          ? data.detail
-          : Array.isArray(data.detail)
-            ? data.detail.map((d: { msg?: string }) => d.msg).join(", ")
-            : "Import failed";
-      throw new ApiError(res.status, message);
-    }
-    return data as BulkImportResponse;
+    return { created, failed: results.length - created, results } as BulkImportResponse;
   },
 
   visitors(token: string) {

@@ -126,6 +126,17 @@ class BulkUploadJsonRequest(BaseModel):
     file_base64: str
 
 
+class ImportRowRequest(BaseModel):
+    row: int
+    name: str
+    phone_raw: str = ""
+    flat_label: str
+    resident_type: str = "IN_HOUSE_OWNER"
+    committee_role: str | None = None
+    email: str | None = None
+    role: str = "RESIDENT"
+
+
 class CreateVisitorRequest(BaseModel):
     guest_name: str
     guest_phone: str | None = None

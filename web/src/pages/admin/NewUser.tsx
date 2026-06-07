@@ -35,6 +35,7 @@ export default function AdminNewUser() {
   const [loading, setLoading] = useState(false);
   const [prefillLoading, setPrefillLoading] = useState(Boolean(editUserId));
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState("");
   const [created, setCreated] = useState<CreateUserResponse | null>(null);
   const [importResult, setImportResult] = useState<BulkImportResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
@@ -126,8 +127,11 @@ export default function AdminNewUser() {
     setImporting(true);
     setImportError("");
     setImportResult(null);
+    setImportProgress("");
     try {
-      const res = await api.importUsers(token, fileRef.current.files[0]);
+      const res = await api.importUsers(token, fileRef.current.files[0], (done, total) => {
+        setImportProgress(`Importing row ${done} of ${total}…`);
+      });
       setImportResult(res);
       if (res.failed > 0 && res.created === 0) {
         const firstErr = res.results.find((r) => !r.ok)?.error;
@@ -306,9 +310,10 @@ export default function AdminNewUser() {
           <label>Excel file</label>
           <input ref={fileRef} type="file" accept=".xlsx,.xlsm" required />
         </div>
+        {importProgress && <p className="muted">{importProgress}</p>}
         {importError && <p className="error">{importError}</p>}
         <button type="submit" className="btn btn-block" disabled={importing}>
-          {importing ? "Importing…" : "Upload & create users"}
+          {importing ? importProgress || "Importing…" : "Upload & create users"}
         </button>
       </form>}
 

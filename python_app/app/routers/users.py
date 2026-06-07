@@ -19,6 +19,7 @@ from ..schemas import (
     BulkImportResponse,
     BulkImportRowResult,
     BulkUploadJsonRequest,
+    ImportRowRequest,
     CreateUserRequest,
     CreateUserResponse,
     CredentialsResponse,
@@ -238,6 +239,30 @@ async def _import_users_from_excel(
 ) -> BulkImportResponse:
     content = await file.read()
     return _import_users_from_bytes(content, file.filename or "", admin, db)
+
+
+@router.post("/import-row", response_model=BulkImportRowResult)
+def import_single_row(
+    payload: ImportRowRequest,
+    admin: User = Depends(require_secretary_ready),
+    db: Session = Depends(get_db),
+):
+    parsed: dict[str, Any] = {
+        "row": payload.row,
+        "name": payload.name,
+        "phone_raw": payload.phone_raw,
+        "flat_label": payload.flat_label,
+        "role": payload.role,
+        "resident_type": payload.resident_type,
+        "committee_role": payload.committee_role,
+        "email": payload.email,
+    }
+    result = _parse_import_row(parsed, db, admin)
+    if result.ok:
+        db.commit()
+    else:
+        db.rollback()
+    return result
 
 
 @router.post("/bulk-json", response_model=BulkImportResponse)
