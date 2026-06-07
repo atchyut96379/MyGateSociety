@@ -44,34 +44,36 @@ router = APIRouter(prefix="/bills", tags=["bills"])
 
 
 
-def _resident_type_label(resident_type: str | None) -> str | None:
-
-    if resident_type == "IN_HOUSE_OWNER":
-
+def _resident_type_label(user: User) -> str | None:
+    if user.role == "COMMITTEE" and user.committee_role:
+        label = user.committee_role.replace("_", " ").title()
+        return f"Committee — {label}"
+    if user.role == "ADMIN" or user.is_main_admin:
+        return "Secretary"
+    if user.resident_type == "IN_HOUSE_OWNER":
         return "Owner"
-
-    if resident_type == "TENANT":
-
+    if user.resident_type == "TENANT":
         return "Tenant"
-
-    return None
-
-
-
+    if user.resident_type == "OUT_HOUSE_OWNER":
+        return "Out-house owner"
+    return user.role.replace("_", " ").title()
 
 
 def _flat_resident(db: Session, flat_id: str) -> User | None:
-
-    return (
-
+    """Primary contact for a flat: resident first, then committee/admin on that flat."""
+    resident = (
         db.query(User)
-
         .filter(User.flat_id == flat_id, User.role == "RESIDENT")
-
         .order_by(User.created_at.asc())
-
         .first()
-
+    )
+    if resident:
+        return resident
+    return (
+        db.query(User)
+        .filter(User.flat_id == flat_id, User.role.in_(["COMMITTEE", "ADMIN"]))
+        .order_by(User.is_main_admin.desc(), User.created_at.asc())
+        .first()
     )
 
 
@@ -103,11 +105,8 @@ def bill_response(bill: MaintenanceBill, db: Session | None = None) -> BillRespo
         resident = _flat_resident(db, bill.flat_id)
 
         if resident:
-
             resident_name = resident.name
-
-            resident_type = _resident_type_label(resident.resident_type)
-
+            resident_type = _resident_type_label(resident)
             resident_phone = resident.phone
 
 
